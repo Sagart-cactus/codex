@@ -31,6 +31,7 @@ By default this will:
 Optional environment variables:
 
 - `PATCH_REMOTE`: defaults to `origin`
+  Set `PATCH_REMOTE=''` to replay from a local branch without fetching a remote copy.
 - `PATCH_BRANCH`: defaults to `codex/triseek-live-demo`
 - `UPSTREAM_REMOTE`: defaults to `upstream`
 - `UPSTREAM_BRANCH`: defaults to `main`

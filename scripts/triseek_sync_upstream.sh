@@ -5,16 +5,16 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-PATCH_REMOTE="${PATCH_REMOTE:-origin}"
-PATCH_BRANCH="${PATCH_BRANCH:-codex/triseek-live-demo}"
-UPSTREAM_REMOTE="${UPSTREAM_REMOTE:-upstream}"
-UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/openai/codex.git}"
-UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-main}"
-OUTPUT_BRANCH="${OUTPUT_BRANCH:-codex/triseek-upstream-sync}"
-VERIFY_BUILD="${VERIFY_BUILD:-1}"
-VERIFY_CMD="${VERIFY_CMD:-cargo build -p codex-cli --bin codex-triseek --manifest-path codex-rs/Cargo.toml}"
-PUSH_BRANCH="${PUSH_BRANCH:-0}"
-PUSH_REMOTE="${PUSH_REMOTE:-origin}"
+PATCH_REMOTE="${PATCH_REMOTE-origin}"
+PATCH_BRANCH="${PATCH_BRANCH-codex/triseek-live-demo}"
+UPSTREAM_REMOTE="${UPSTREAM_REMOTE-upstream}"
+UPSTREAM_REPO="${UPSTREAM_REPO-https://github.com/openai/codex.git}"
+UPSTREAM_BRANCH="${UPSTREAM_BRANCH-main}"
+OUTPUT_BRANCH="${OUTPUT_BRANCH-codex/triseek-upstream-sync}"
+VERIFY_BUILD="${VERIFY_BUILD-1}"
+VERIFY_CMD="${VERIFY_CMD-cargo build -p codex-cli --bin codex-triseek --manifest-path codex-rs/Cargo.toml}"
+PUSH_BRANCH="${PUSH_BRANCH-0}"
+PUSH_REMOTE="${PUSH_REMOTE-origin}"
 
 if ! git diff --quiet || ! git diff --cached --quiet; then
     echo "Refusing to sync with a dirty worktree. Commit or stash your changes first." >&2
