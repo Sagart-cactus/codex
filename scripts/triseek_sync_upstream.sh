@@ -37,6 +37,15 @@ else
 fi
 
 merge_base="$(git merge-base "$patch_ref" "$upstream_ref")"
+merge_commits="$(git rev-list --count --merges "${merge_base}..${patch_ref}")"
+if [[ "$merge_commits" != "0" ]]; then
+    cat >&2 <<EOF
+Refusing to sync from $patch_ref because it contains merge commits after $merge_base.
+Keep the TriSeek patch branch linear and replayable, or point PATCH_BRANCH at a linear patch branch.
+EOF
+    exit 1
+fi
+
 patch_commits=()
 while IFS= read -r commit; do
     patch_commits+=("$commit")

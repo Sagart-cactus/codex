@@ -9,6 +9,7 @@ This repo carries a TriSeek patch stack on top of upstream Codex. The sync flow 
 - Upstream base: `openai/codex` `main`
 
 The generated branch is recreated from upstream every run. It is not meant to be edited directly.
+The source patch branch should stay linear. Do not merge `upstream/main` into it.
 
 ## Manual sync
 
@@ -58,5 +59,6 @@ The workflow installs Rust, fetches upstream Codex, replays the TriSeek patch st
 ## Notes
 
 - Scheduled workflows only run when this workflow file exists on the repository default branch.
-- If cherry-picks stop due to conflicts, resolve them on the source patch branch and rerun the sync.
+- If cherry-picks stop due to conflicts, resolve them on the source patch branch as ordinary follow-up commits and rerun the sync.
+- The sync script refuses patch branches that contain merge commits after the upstream merge-base.
 - The replay logic uses the merge-base between the source patch branch and upstream `main`, so it automatically reuses the current TriSeek patch stack rather than hard-coding commit SHAs.
