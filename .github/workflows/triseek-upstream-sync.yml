@@ -1,0 +1,82 @@
+name: triseek-upstream-sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      patch_branch:
+        description: Branch containing the TriSeek patch stack
+        default: codex/triseek-live-demo
+        required: false
+      output_branch:
+        description: Branch to recreate from upstream plus TriSeek patches
+        default: codex/triseek-upstream-sync
+        required: false
+      push_branch:
+        description: Push the rebuilt branch back to origin
+        type: boolean
+        default: true
+        required: false
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: triseek-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends pkg-config libcap-dev
+
+      - uses: dtolnay/rust-toolchain@1.93.0
+
+      - name: Configure git author
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Rebuild TriSeek branch on latest upstream
+        env:
+          PATCH_BRANCH_INPUT: ${{ github.event.inputs.patch_branch }}
+          OUTPUT_BRANCH_INPUT: ${{ github.event.inputs.output_branch }}
+          PUSH_BRANCH_INPUT: ${{ github.event.inputs.push_branch }}
+        run: |
+          set -euo pipefail
+
+          export PATCH_REMOTE=origin
+          export PATCH_BRANCH="${PATCH_BRANCH_INPUT:-codex/triseek-live-demo}"
+          export OUTPUT_BRANCH="${OUTPUT_BRANCH_INPUT:-codex/triseek-upstream-sync}"
+          export PUSH_REMOTE=origin
+          export VERIFY_BUILD=1
+
+          if [[ "${PUSH_BRANCH_INPUT:-true}" == "false" ]]; then
+            export PUSH_BRANCH=0
+          else
+            export PUSH_BRANCH=1
+          fi
+
+          ./scripts/triseek_sync_upstream.sh
+
+      - name: Write summary
+        env:
+          PATCH_BRANCH_INPUT: ${{ github.event.inputs.patch_branch }}
+          OUTPUT_BRANCH_INPUT: ${{ github.event.inputs.output_branch }}
+        run: |
+          {
+            echo "## TriSeek upstream sync"
+            echo
+            echo "- Source patch branch: ${PATCH_BRANCH_INPUT:-codex/triseek-live-demo}"
+            echo "- Output branch: ${OUTPUT_BRANCH_INPUT:-codex/triseek-upstream-sync}"
+            echo "- Result commit: $(git rev-parse --short HEAD)"
+          } >> "$GITHUB_STEP_SUMMARY"

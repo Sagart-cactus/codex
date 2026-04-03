@@ -1,5 +1,6 @@
 use clap::Args;
 use clap::CommandFactory;
+use clap::FromArgMatches;
 use clap::Parser;
 use clap_complete::Shell;
 use clap_complete::generate;
@@ -42,7 +43,7 @@ mod mcp_cmd;
 #[cfg(not(windows))]
 mod wsl_paths;
 
-use crate::mcp_cmd::McpCli;
+use self::mcp_cmd::McpCli;
 
 use codex_core::config::Config;
 use codex_core::config::ConfigOverrides;
@@ -52,6 +53,35 @@ use codex_features::FEATURES;
 use codex_features::Stage;
 use codex_features::is_known_feature_key;
 use codex_terminal_detection::TerminalName;
+
+const DEFAULT_BIN_NAME: &str = "codex";
+const TRISEEK_DEFAULT_CONFIG_OVERRIDES: &[&str] = &[
+    "triseek.enabled=true",
+    "triseek.auto_build=true",
+    "triseek.min_index_category=\"medium\"",
+];
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CliStartup {
+    program_name: &'static str,
+    default_config_overrides: &'static [&'static str],
+}
+
+impl CliStartup {
+    pub const fn standard() -> Self {
+        Self {
+            program_name: DEFAULT_BIN_NAME,
+            default_config_overrides: &[],
+        }
+    }
+
+    pub const fn triseek() -> Self {
+        Self {
+            program_name: "codex-triseek",
+            default_config_overrides: TRISEEK_DEFAULT_CONFIG_OVERRIDES,
+        }
+    }
+}
 
 /// Codex CLI
 ///
@@ -65,7 +95,7 @@ use codex_terminal_detection::TerminalName;
     // The executable is sometimes invoked via a platform‑specific name like
     // `codex-x86_64-unknown-linux-musl`, but the help output should always use
     // the generic `codex` command name that users run.
-    bin_name = "codex",
+    bin_name = DEFAULT_BIN_NAME,
     override_usage = "codex [OPTIONS] [PROMPT]\n       codex [OPTIONS] <COMMAND> [ARGS]"
 )]
 struct MultitoolCli {
@@ -483,10 +513,10 @@ fn run_update_action(action: UpdateAction) -> anyhow::Result<()> {
         #[cfg(not(windows))]
         {
             let (cmd, args) = action.command_args();
-            let command_path = crate::wsl_paths::normalize_for_wsl(cmd);
+            let command_path = self::wsl_paths::normalize_for_wsl(cmd);
             let normalized_args: Vec<String> = args
                 .iter()
-                .map(crate::wsl_paths::normalize_for_wsl)
+                .map(self::wsl_paths::normalize_for_wsl)
                 .collect();
             std::process::Command::new(&command_path)
                 .args(&normalized_args)
@@ -595,20 +625,26 @@ fn stage_str(stage: Stage) -> &'static str {
 }
 
 fn main() -> anyhow::Result<()> {
+    run_with_startup(CliStartup::standard())
+}
+
+pub fn run_with_startup(startup: CliStartup) -> anyhow::Result<()> {
     arg0_dispatch_or_else(|arg0_paths: Arg0DispatchPaths| async move {
-        cli_main(arg0_paths).await?;
+        cli_main(arg0_paths, startup).await?;
         Ok(())
     })
 }
 
-async fn cli_main(arg0_paths: Arg0DispatchPaths) -> anyhow::Result<()> {
+async fn cli_main(arg0_paths: Arg0DispatchPaths, startup: CliStartup) -> anyhow::Result<()> {
     let MultitoolCli {
         config_overrides: mut root_config_overrides,
         feature_toggles,
         remote,
         mut interactive,
         subcommand,
-    } = MultitoolCli::parse();
+    } = parse_multitool_cli(startup.program_name);
+
+    prepend_default_config_overrides(&mut root_config_overrides, startup.default_config_overrides);
 
     // Fold --enable/--disable into config overrides so they flow to all subcommands.
     let toggle_overrides = feature_toggles.to_overrides()?;
@@ -649,7 +685,7 @@ async fn cli_main(arg0_paths: Arg0DispatchPaths) -> anyhow::Result<()> {
                 root_remote_auth_token_env.as_deref(),
                 "review",
             )?;
-            let mut exec_cli = ExecCli::try_parse_from(["codex", "exec"])?;
+            let mut exec_cli = ExecCli::try_parse_from([startup.program_name, "exec"])?;
             exec_cli.command = Some(ExecCommand::Review(review_args));
             prepend_config_flags(
                 &mut exec_cli.config_overrides,
@@ -811,7 +847,8 @@ async fn cli_main(arg0_paths: Arg0DispatchPaths) -> anyhow::Result<()> {
                         .await;
                     } else if login_cli.api_key.is_some() {
                         eprintln!(
-                            "The --api-key flag is no longer supported. Pipe the key instead, e.g. `printenv OPENAI_API_KEY | codex login --with-api-key`."
+                            "The --api-key flag is no longer supported. Pipe the key instead, e.g. `printenv OPENAI_API_KEY | {} login --with-api-key`.",
+                            startup.program_name
                         );
                         std::process::exit(1);
                     } else if login_cli.with_api_key {
@@ -841,7 +878,7 @@ async fn cli_main(arg0_paths: Arg0DispatchPaths) -> anyhow::Result<()> {
                 root_remote_auth_token_env.as_deref(),
                 "completion",
             )?;
-            print_completion(completion_cli);
+            print_completion(completion_cli, startup.program_name);
         }
         Some(Subcommand::Cloud(mut cloud_cli)) => {
             reject_remote_mode_for_subcommand(
@@ -1145,6 +1182,30 @@ fn prepend_config_flags(
         .splice(0..0, cli_config_overrides.raw_overrides);
 }
 
+fn prepend_default_config_overrides(
+    cli_config_overrides: &mut CliConfigOverrides,
+    defaults: &[&str],
+) {
+    if defaults.is_empty() {
+        return;
+    }
+
+    cli_config_overrides
+        .raw_overrides
+        .splice(0..0, defaults.iter().map(|value| (*value).to_string()));
+}
+
+fn parse_multitool_cli(program_name: &str) -> MultitoolCli {
+    let mut command = MultitoolCli::command();
+    command = command.bin_name(program_name.to_string());
+    command = command.override_usage(format!(
+        "{program_name} [OPTIONS] [PROMPT]\n       {program_name} [OPTIONS] <COMMAND> [ARGS]"
+    ));
+
+    let matches = command.get_matches();
+    MultitoolCli::from_arg_matches(&matches).unwrap_or_else(|err| err.exit())
+}
+
 fn reject_remote_mode_for_subcommand(
     remote: Option<&str>,
     remote_auth_token_env: Option<&str>,
@@ -1364,10 +1425,10 @@ fn merge_interactive_cli_flags(interactive: &mut TuiCli, subcommand_cli: TuiCli)
         .extend(subcommand_cli.config_overrides.raw_overrides);
 }
 
-fn print_completion(cmd: CompletionCommand) {
+fn print_completion(cmd: CompletionCommand, program_name: &str) {
     let mut app = MultitoolCli::command();
-    let name = "codex";
-    generate(cmd.shell, &mut app, name, &mut std::io::stdout());
+    app = app.bin_name(program_name.to_string());
+    generate(cmd.shell, &mut app, program_name, &mut std::io::stdout());
 }
 
 #[cfg(test)]
@@ -1995,6 +2056,25 @@ mod tests {
         assert_eq!(
             overrides,
             vec!["features.use_linux_sandbox_bwrap=true".to_string(),]
+        );
+    }
+
+    #[test]
+    fn triseek_defaults_stay_low_precedence() {
+        let mut overrides = CliConfigOverrides {
+            raw_overrides: vec!["triseek.enabled=false".to_string()],
+        };
+
+        prepend_default_config_overrides(&mut overrides, TRISEEK_DEFAULT_CONFIG_OVERRIDES);
+
+        assert_eq!(
+            overrides.raw_overrides,
+            vec![
+                "triseek.enabled=true".to_string(),
+                "triseek.auto_build=true".to_string(),
+                "triseek.min_index_category=\"medium\"".to_string(),
+                "triseek.enabled=false".to_string(),
+            ]
         );
     }
 

@@ -1,0 +1,5 @@
+Search this repository using grep_files only. Do not use shell commands.
+Use simple literal search tokens only. Do not use regex anchors, alternation, or wildcard patterns.
+For KASAN, KCSAN, KFENCE, and KMSAN, identify the dedicated Kconfig file and the primary runtime source directory for each.
+Check each sanitizer separately and do not guess.
+Reply with exactly four lines in the form NAME: Kconfig=<path>; runtime=<path>.

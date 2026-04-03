@@ -1700,6 +1700,49 @@
       },
       "type": "object"
     },
+    "TriSeekRepoCategory": {
+      "enum": [
+        "small",
+        "medium",
+        "large",
+        "very_large"
+      ],
+      "type": "string"
+    },
+    "TriSeekToml": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_build": {
+          "description": "When true, Codex may create or refresh indexes in the background.",
+          "type": "boolean"
+        },
+        "enabled": {
+          "description": "When true, Codex may route supported repository searches through TriSeek.",
+          "type": "boolean"
+        },
+        "index_root": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/AbsolutePathBuf"
+            }
+          ],
+          "description": "Root directory for shared TriSeek indexes. Defaults to `$CODEX_HOME/triseek/indexes`."
+        },
+        "log_routes": {
+          "description": "Emit route decisions and index lifecycle messages to the normal log sink.",
+          "type": "boolean"
+        },
+        "min_index_category": {
+          "allOf": [
+            {
+              "$ref": "#/definitions/TriSeekRepoCategory"
+            }
+          ],
+          "description": "Minimum repository size category required before Codex will build a TriSeek index."
+        }
+      },
+      "type": "object"
+    },
     "TrustLevel": {
       "description": "Represents the trust level for a project directory. This determines the approval policy and sandbox mode applied.",
       "enum": [
@@ -2586,6 +2629,15 @@
         }
       ],
       "description": "Nested tools section for feature toggles"
+    },
+    "triseek": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/TriSeekToml"
+        }
+      ],
+      "default": null,
+      "description": "TriSeek-backed repository search settings."
     },
     "tui": {
       "allOf": [

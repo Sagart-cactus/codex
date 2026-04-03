@@ -418,6 +418,9 @@ pub struct Config {
     /// overridden by the `CODEX_HOME` environment variable).
     pub codex_home: PathBuf,
 
+    /// TriSeek search integration settings.
+    pub triseek: TriSeekConfig,
+
     /// Directory where Codex stores the SQLite state DB.
     pub sqlite_home: PathBuf,
 
@@ -1283,6 +1286,10 @@ pub struct ConfigToml {
     /// Defaults to `$CODEX_HOME/log`.
     pub log_dir: Option<AbsolutePathBuf>,
 
+    /// TriSeek-backed repository search settings.
+    #[serde(default)]
+    pub triseek: Option<TriSeekToml>,
+
     /// Optional URI-based file opener. If set, citations to files in the model
     /// output will be hyperlinked using the specified URI scheme.
     pub file_opener: Option<UriBasedFileOpener>,
@@ -1511,6 +1518,43 @@ pub struct RealtimeToml {
     pub version: Option<RealtimeWsVersion>,
     #[serde(rename = "type")]
     pub session_type: Option<RealtimeWsMode>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum TriSeekRepoCategory {
+    Small,
+    Medium,
+    Large,
+    VeryLarge,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, JsonSchema)]
+#[schemars(deny_unknown_fields)]
+pub struct TriSeekToml {
+    /// When true, Codex may route supported repository searches through TriSeek.
+    pub enabled: Option<bool>,
+
+    /// When true, Codex may create or refresh indexes in the background.
+    pub auto_build: Option<bool>,
+
+    /// Emit route decisions and index lifecycle messages to the normal log sink.
+    pub log_routes: Option<bool>,
+
+    /// Minimum repository size category required before Codex will build a TriSeek index.
+    pub min_index_category: Option<TriSeekRepoCategory>,
+
+    /// Root directory for shared TriSeek indexes. Defaults to `$CODEX_HOME/triseek/indexes`.
+    pub index_root: Option<AbsolutePathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TriSeekConfig {
+    pub enabled: bool,
+    pub auto_build: bool,
+    pub log_routes: bool,
+    pub min_index_category: TriSeekRepoCategory,
+    pub index_root: PathBuf,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, PartialEq, Eq, JsonSchema)]
@@ -2518,6 +2562,22 @@ impl Config {
                 p.push("log");
                 p
             });
+        let triseek = {
+            let tri_cfg = cfg.triseek.clone().unwrap_or_default();
+            let index_root = tri_cfg
+                .index_root
+                .map(|path| path.to_path_buf())
+                .unwrap_or_else(|| codex_home.join("triseek").join("indexes"));
+            TriSeekConfig {
+                enabled: tri_cfg.enabled.unwrap_or(false),
+                auto_build: tri_cfg.auto_build.unwrap_or(true),
+                log_routes: tri_cfg.log_routes.unwrap_or(false),
+                min_index_category: tri_cfg
+                    .min_index_category
+                    .unwrap_or(TriSeekRepoCategory::Medium),
+                index_root,
+            }
+        };
         let sqlite_home = cfg
             .sqlite_home
             .as_ref()
@@ -2657,6 +2717,7 @@ impl Config {
             memories: cfg.memories.unwrap_or_default().into(),
             agent_job_max_runtime_seconds,
             codex_home,
+            triseek,
             sqlite_home,
             log_dir,
             config_layer_stack,

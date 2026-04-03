@@ -94,6 +94,8 @@ rmcp = { workspace = true, default-features = false, features = [
     "server",
 ] }
 schemars = { workspace = true }
+search-core = { workspace = true }
+search-index = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sha1 = { workspace = true }
@@ -102,6 +104,7 @@ similar = { workspace = true }
 tempfile = { workspace = true }
 test-log = { workspace = true }
 thiserror = { workspace = true }
+time = { workspace = true, features = ["formatting", "serde"] }
 tokio = { workspace = true, features = [
     "io-std",
     "macros",

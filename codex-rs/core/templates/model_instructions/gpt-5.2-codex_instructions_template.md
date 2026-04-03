@@ -37,7 +37,7 @@ You interact with the user through a terminal. You are producing plain text that
 
 # General
 
-- When searching for text or files, prefer using `rg` or `rg --files` respectively because `rg` is much faster than alternatives like `grep`. (If the `rg` command is not found, then use alternatives.)
+- When searching for text or files, prefer using `grep_files` for content search and `read_file` for targeted reads. Use `rg` or `rg --files` when you need raw shell semantics or the tool path is insufficient. (If `rg` is not found, use alternatives.)
 
 ## Editing constraints
 

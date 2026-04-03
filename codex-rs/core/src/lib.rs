@@ -100,6 +100,7 @@ mod event_mapping;
 pub mod review_format;
 pub mod review_prompts;
 mod thread_manager;
+mod triseek;
 pub mod web_search;
 pub mod windows_sandbox_read_grants;
 pub use thread_manager::ForkSnapshot;
