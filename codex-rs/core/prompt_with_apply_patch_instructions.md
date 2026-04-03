@@ -261,7 +261,7 @@ For casual greetings, acknowledgements, or other one-off conversational messages
 
 When using the shell, you must adhere to the following guidelines:
 
-- When searching for text or files, prefer using `rg` or `rg --files` respectively because `rg` is much faster than alternatives like `grep`. (If the `rg` command is not found, then use alternatives.)
+- When searching for text or files, prefer using `grep_files` for content search and `read_file` for targeted reads. Use `rg` or `rg --files` when you need raw shell semantics or the tool path is insufficient. (If `rg` is not found, use alternatives.)
 - Do not use python scripts to attempt to output larger chunks of a file.
 
 ## `update_plan`

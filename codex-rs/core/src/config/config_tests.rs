@@ -4460,6 +4460,13 @@ fn test_precedence_fixture_with_o3_profile() -> std::io::Result<()> {
             memories: MemoriesConfig::default(),
             agent_job_max_runtime_seconds: DEFAULT_AGENT_JOB_MAX_RUNTIME_SECONDS,
             codex_home: fixture.codex_home(),
+            triseek: TriSeekConfig {
+                enabled: false,
+                auto_build: true,
+                log_routes: false,
+                min_index_category: TriSeekRepoCategory::Medium,
+                index_root: fixture.codex_home().join("triseek").join("indexes"),
+            },
             sqlite_home: fixture.codex_home(),
             log_dir: fixture.codex_home().join("log"),
             config_layer_stack: Default::default(),
@@ -4602,6 +4609,13 @@ fn test_precedence_fixture_with_gpt3_profile() -> std::io::Result<()> {
         memories: MemoriesConfig::default(),
         agent_job_max_runtime_seconds: DEFAULT_AGENT_JOB_MAX_RUNTIME_SECONDS,
         codex_home: fixture.codex_home(),
+        triseek: TriSeekConfig {
+            enabled: false,
+            auto_build: true,
+            log_routes: false,
+            min_index_category: TriSeekRepoCategory::Medium,
+            index_root: fixture.codex_home().join("triseek").join("indexes"),
+        },
         sqlite_home: fixture.codex_home(),
         log_dir: fixture.codex_home().join("log"),
         config_layer_stack: Default::default(),
@@ -4742,6 +4756,13 @@ fn test_precedence_fixture_with_zdr_profile() -> std::io::Result<()> {
         memories: MemoriesConfig::default(),
         agent_job_max_runtime_seconds: DEFAULT_AGENT_JOB_MAX_RUNTIME_SECONDS,
         codex_home: fixture.codex_home(),
+        triseek: TriSeekConfig {
+            enabled: false,
+            auto_build: true,
+            log_routes: false,
+            min_index_category: TriSeekRepoCategory::Medium,
+            index_root: fixture.codex_home().join("triseek").join("indexes"),
+        },
         sqlite_home: fixture.codex_home(),
         log_dir: fixture.codex_home().join("log"),
         config_layer_stack: Default::default(),
@@ -4868,6 +4889,13 @@ fn test_precedence_fixture_with_gpt5_profile() -> std::io::Result<()> {
         memories: MemoriesConfig::default(),
         agent_job_max_runtime_seconds: DEFAULT_AGENT_JOB_MAX_RUNTIME_SECONDS,
         codex_home: fixture.codex_home(),
+        triseek: TriSeekConfig {
+            enabled: false,
+            auto_build: true,
+            log_routes: false,
+            min_index_category: TriSeekRepoCategory::Medium,
+            index_root: fixture.codex_home().join("triseek").join("indexes"),
+        },
         sqlite_home: fixture.codex_home(),
         log_dir: fixture.codex_home().join("log"),
         config_layer_stack: Default::default(),
@@ -6282,4 +6310,47 @@ fn test_tui_notification_method() {
     let parsed: RootTomlTest =
         toml::from_str(toml).expect("deserialize notification_method=\"bel\"");
     assert_eq!(parsed.tui.notification_method, NotificationMethod::Bel);
+}
+
+#[test]
+fn triseek_settings_load_from_config_toml() -> std::io::Result<()> {
+    let codex_home = TempDir::new()?;
+    let index_root = codex_home.path().join("shared-indexes");
+    let cfg_text = format!(
+        r#"
+[triseek]
+enabled = true
+auto_build = false
+log_routes = true
+min_index_category = "large"
+index_root = "{index_root}"
+"#,
+        index_root = index_root.display(),
+    );
+    let cfg: ConfigToml = toml::from_str(&cfg_text).expect("TOML deserialization should succeed");
+
+    let triseek = cfg
+        .triseek
+        .as_ref()
+        .expect("triseek config should be present");
+    assert_eq!(triseek.enabled, Some(true));
+    assert_eq!(triseek.auto_build, Some(false));
+    assert_eq!(triseek.log_routes, Some(true));
+    assert_eq!(triseek.min_index_category, Some(TriSeekRepoCategory::Large));
+
+    let config = Config::load_from_base_config_with_overrides(
+        cfg,
+        ConfigOverrides::default(),
+        codex_home.path().to_path_buf(),
+    )?;
+
+    assert!(config.triseek.enabled);
+    assert!(!config.triseek.auto_build);
+    assert!(config.triseek.log_routes);
+    assert_eq!(
+        config.triseek.min_index_category,
+        TriSeekRepoCategory::Large
+    );
+    assert_eq!(config.triseek.index_root, index_root);
+    Ok(())
 }

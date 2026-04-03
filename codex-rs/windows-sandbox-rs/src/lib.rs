@@ -365,15 +365,15 @@ mod windows_impl {
         };
 
         unsafe {
-            if is_workspace_write
-                && let Ok(base) = super::token::get_current_token_for_restriction()
-            {
-                if let Ok(bytes) = super::token::get_logon_sid_bytes(base) {
-                    let mut tmp = bytes;
-                    let psid2 = tmp.as_mut_ptr() as *mut c_void;
-                    allow_null_device(psid2);
+            if is_workspace_write {
+                if let Ok(base) = super::token::get_current_token_for_restriction() {
+                    if let Ok(bytes) = super::token::get_logon_sid_bytes(base) {
+                        let mut tmp = bytes;
+                        let psid2 = tmp.as_mut_ptr() as *mut c_void;
+                        allow_null_device(psid2);
+                    }
+                    windows_sys::Win32::Foundation::CloseHandle(base);
                 }
-                windows_sys::Win32::Foundation::CloseHandle(base);
             }
         }
 
@@ -394,24 +394,23 @@ mod windows_impl {
                 } else {
                     psid_generic
                 };
-                if let Ok(added) = add_allow_ace(p, psid)
-                    && added
-                {
-                    if persist_aces {
-                        if p.is_dir() {
-                            // best-effort seeding omitted intentionally
+                if let Ok(added) = add_allow_ace(p, psid) {
+                    if added {
+                        if persist_aces {
+                            if p.is_dir() {
+                                // best-effort seeding omitted intentionally
+                            }
+                        } else {
+                            guards.push((p.clone(), psid));
                         }
-                    } else {
-                        guards.push((p.clone(), psid));
                     }
                 }
             }
             for p in &deny {
-                if let Ok(added) = add_deny_write_ace(p, psid_generic)
-                    && added
-                    && !persist_aces
-                {
-                    guards.push((p.clone(), psid_generic));
+                if let Ok(added) = add_deny_write_ace(p, psid_generic) {
+                    if added && !persist_aces {
+                        guards.push((p.clone(), psid_generic));
+                    }
                 }
             }
             allow_null_device(psid_generic);

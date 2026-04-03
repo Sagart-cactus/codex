@@ -72,6 +72,36 @@ back to these environment variables.
 
 Codex stores "do not show again" flags for some UI prompts under the `[notice]` table.
 
+## TriSeek search routing
+
+Codex can route supported repository searches through TriSeek instead of plain `rg`.
+TriSeek is intended for repeated searches in medium or large repositories. When no
+index is available, Codex falls back to `rg` immediately and builds the index in the
+background under `~/.codex/triseek/indexes` by default.
+
+Example `~/.codex/config.toml` snippet:
+
+```toml
+[triseek]
+enabled = true
+auto_build = true
+min_index_category = "medium"
+log_routes = false
+```
+
+You can override the index root if you want to keep TriSeek artifacts elsewhere:
+
+```toml
+[triseek]
+index_root = "/absolute/path/to/shared/indexes"
+```
+
+For one-off experiments, use CLI config overrides instead of editing `config.toml`:
+
+```bash
+codex -c triseek.enabled=true -c triseek.log_routes=true
+```
+
 ## Plan mode defaults
 
 `plan_mode_reasoning_effort` lets you set a Plan-mode-specific default reasoning

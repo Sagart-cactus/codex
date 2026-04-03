@@ -9,13 +9,17 @@ use codex_mcp::mcp::CODEX_APPS_MCP_SERVER_NAME;
 use codex_mcp::mcp_connection_manager::ToolInfo;
 use codex_protocol::dynamic_tools::DynamicToolSpec;
 use codex_tools::DiscoverableTool;
+use codex_tools::JsonSchema;
+use codex_tools::ResponsesApiTool;
 use codex_tools::ToolHandlerKind;
 use codex_tools::ToolRegistryPlanAppTool;
 use codex_tools::ToolRegistryPlanParams;
+use codex_tools::ToolSpec;
 use codex_tools::ToolUserShellType;
 use codex_tools::ToolsConfig;
 use codex_tools::WaitAgentTimeoutOptions;
 use codex_tools::build_tool_registry_plan;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -40,6 +44,7 @@ pub(crate) fn build_specs_with_discoverable_tools(
     use crate::tools::handlers::CodeModeExecuteHandler;
     use crate::tools::handlers::CodeModeWaitHandler;
     use crate::tools::handlers::DynamicToolHandler;
+    use crate::tools::handlers::GrepFilesHandler;
     use crate::tools::handlers::JsReplHandler;
     use crate::tools::handlers::JsReplResetHandler;
     use crate::tools::handlers::ListDirHandler;
@@ -232,7 +237,58 @@ pub(crate) fn build_specs_with_discoverable_tools(
             }
         }
     }
+
+    builder.push_spec(create_grep_files_tool());
+    builder.register_handler("grep_files", Arc::new(GrepFilesHandler));
+
     builder
+}
+
+fn create_grep_files_tool() -> ToolSpec {
+    let mut properties = BTreeMap::new();
+    properties.insert(
+        "pattern".to_string(),
+        JsonSchema::String {
+            description: Some("Literal or regex pattern to search for.".to_string()),
+        },
+    );
+    properties.insert(
+        "include".to_string(),
+        JsonSchema::String {
+            description: Some("Optional glob filter such as `*.rs` or `src/**`.".to_string()),
+        },
+    );
+    properties.insert(
+        "path".to_string(),
+        JsonSchema::String {
+            description: Some(
+                "Optional file or directory to search under. Defaults to the current working directory."
+                    .to_string(),
+            ),
+        },
+    );
+    properties.insert(
+        "limit".to_string(),
+        JsonSchema::Number {
+            description: Some(
+                "Maximum number of matching file paths to return. Defaults to 100, capped at 2000."
+                    .to_string(),
+            ),
+        },
+    );
+
+    ToolSpec::Function(ResponsesApiTool {
+        name: "grep_files".to_string(),
+        description: "Search for files whose contents match a pattern. Returns matching file paths, using TriSeek when a shared index is available and ripgrep otherwise.".to_string(),
+        strict: false,
+        defer_loading: None,
+        parameters: JsonSchema::Object {
+            properties,
+            required: Some(vec!["pattern".to_string()]),
+            additional_properties: Some(false.into()),
+        },
+        output_schema: None,
+    })
 }
 
 #[cfg(test)]
