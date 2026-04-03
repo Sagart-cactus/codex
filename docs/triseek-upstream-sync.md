@@ -56,7 +56,7 @@ PUSH_BRANCH=1 OUTPUT_BRANCH=codex/triseek-upstream-sync ./scripts/triseek_sync_u
 Equivalent `just` invocation:
 
 ```bash
-just triseek-sync push_branch=1 output_branch=codex/triseek-upstream-sync
+PUSH_BRANCH=1 OUTPUT_BRANCH=codex/triseek-upstream-sync just triseek-sync
 ```
 
 ## GitHub Actions
