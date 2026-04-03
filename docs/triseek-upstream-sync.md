@@ -20,6 +20,13 @@ cd /Users/trivedi/Documents/Projects/codex
 ./scripts/triseek_sync_upstream.sh
 ```
 
+If you use `just`, there is also a wrapper:
+
+```bash
+cd /Users/trivedi/Documents/Projects/codex
+just triseek-sync
+```
+
 By default this will:
 
 - fetch `upstream/main`
@@ -44,6 +51,12 @@ Example:
 
 ```bash
 PUSH_BRANCH=1 OUTPUT_BRANCH=codex/triseek-upstream-sync ./scripts/triseek_sync_upstream.sh
+```
+
+Equivalent `just` invocation:
+
+```bash
+just triseek-sync push_branch=1 output_branch=codex/triseek-upstream-sync
 ```
 
 ## GitHub Actions

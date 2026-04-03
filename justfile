@@ -5,6 +5,16 @@ set positional-arguments
 help:
     just -l
 
+# Rebuild the TriSeek patch stack on top of the latest upstream Codex.
+[no-cd]
+triseek-sync patch_remote='' patch_branch='codex/triseek-live-demo' output_branch='codex/triseek-upstream-sync' verify_build='1' push_branch='0':
+    PATCH_REMOTE="{{patch_remote}}" \
+    PATCH_BRANCH="{{patch_branch}}" \
+    OUTPUT_BRANCH="{{output_branch}}" \
+    VERIFY_BUILD="{{verify_build}}" \
+    PUSH_BRANCH="{{push_branch}}" \
+    ./scripts/triseek_sync_upstream.sh
+
 # `codex`
 alias c := codex
 codex *args:
